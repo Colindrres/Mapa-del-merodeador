@@ -1,0 +1,110 @@
+import flet as ft
+import json
+import os
+
+def add_record(personal, personal_view, json_file, page):
+    name_field = page.controls[0].controls[0]
+    age_field = page.controls[0].controls[1]
+    position_field = page.controls[0].controls[2]
+
+    new_record = {
+        "nombre": name_field.value,
+        "edad": age_field.value,
+        "puesto": position_field.value
+    }
+
+    personal.append(new_record)
+    with open(json_file, "w") as f:
+        json.dump(personal, f)
+
+    personal_view.controls.append(
+        ft.ListTile(
+            title=ft.Text(new_record["nombre"], color="blue"),
+            subtitle=ft.Text(f"Edad: {new_record['edad']}, Puesto: {new_record['puesto']}", color="blue"),
+            leading=ft.Icon(ft.icons.PERSON, color="blue"),
+            trailing=ft.IconButton(ft.icons.DELETE, on_click=lambda _: delete_record(personal, personal_view, json_file, page), color="blue")
+        )
+    )
+    page.update()
+
+def edit_record(personal, personal_view, json_file, page):
+    selected_record = next((r for r in personal if r["nombre"] == personal_view.selected_item.title.value), None)
+    if selected_record:
+        name_field = page.controls[0].controls[0]
+        age_field = page.controls[0].controls[1]
+        position_field = page.controls[0].controls[2]
+
+        name_field.value = selected_record["nombre"]
+        age_field.value = selected_record["edad"]
+        position_field.value = selected_record["puesto"]
+
+        page.update()
+
+def delete_record(personal, personal_view, json_file, page):
+    selected_record = next((r for r in personal if r["nombre"] == personal_view.selected_item.title.value), None)
+    if selected_record:
+        personal.remove(selected_record)
+        with open(json_file, "w") as f:
+            json.dump(personal, f)
+
+        personal_view.controls.remove(personal_view.selected_item)
+        page.update()
+
+def main(page: ft.Page):
+    # Ruta del archivo JSON
+    json_file = os.path.join(os.path.expanduser("~"), "Desktop", "personal.json")
+
+    # Cargar datos del archivo JSON si existe
+    if os.path.exists(json_file):
+        with open(json_file, "r") as f:
+            personal = json.load(f)
+    else:
+        personal = []
+
+    # Crear la vista principal
+    container = ft.Column(
+        width=800,
+        height=600,
+        alignment=ft.MainAxisAlignment.CENTER
+    )
+    page.add(container)
+
+    # Crear el encabezado
+    header = ft.Text("Registro de Personal", size=24, weight="bold", color="blue")
+    container.controls.append(header)
+
+    # Crear la ListView para mostrar el personal
+    personal_view = ft.ListView(width=600, height=400, expand=True)
+    container.controls.append(personal_view)
+
+    # Crear los controles del formulario
+    form = ft.Column(
+        controls=[
+            ft.TextField(label="Nombre", width=400, ref=ft.Ref[ft.TextField]()),
+            ft.TextField(label="Edad", width=400, ref=ft.Ref[ft.TextField]()),
+            ft.TextField(label="Puesto", width=400, ref=ft.Ref[ft.TextField]()),
+            ft.Row(
+                [
+                    ft.ElevatedButton("Agregar", on_click=lambda _: add_record(personal, personal_view, json_file, page), color="blue"),
+                    ft.ElevatedButton("Editar", on_click=lambda _: edit_record(personal, personal_view, json_file, page), color="blue"),
+                    ft.ElevatedButton("Eliminar", on_click=lambda _: delete_record(personal, personal_view, json_file, page), color="blue")
+                ]
+            )
+        ]
+    )
+    container.controls.append(form)
+
+    # Cargar los registros existentes en la ListView
+    for record in personal:
+        personal_view.controls.append(
+            ft.ListTile(
+                title=ft.Text(record["nombre"], color="blue"),
+                subtitle=ft.Text(f"Edad: {record['edad']}, Puesto: {record['puesto']}", color="blue"),
+                leading=ft.Icon(ft.icons.PERSON, color="blue"),
+                trailing=ft.IconButton(ft.icons.DELETE, on_click=lambda _: delete_record(personal, personal_view, json_file, page), color="blue")
+            )
+        )
+
+    page.update()
+
+ft.app(target=main)
